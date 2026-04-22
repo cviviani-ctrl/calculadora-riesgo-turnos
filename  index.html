@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calculadora Riesgo del Turno — BESIAK | Aloysia / ErgoCare</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#f0f4f8 0%,#e8eef5 50%,#f5f0ff 100%);min-height:100vh;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useCallback } = React;
+
+// ─── ALOYSIA ISOTIPO ───
+const AloysiaIsotipo = ({size=44}) => (
+  <svg width={size} height={size} viewBox="0 0 389.02 348.88" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="alGrad" x1="138.34" y1="174.44" x2="250.68" y2="174.44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stopColor="#00a851"/><stop offset="1" stopColor="#005b8e"/>
+    </linearGradient></defs>
+    <path fill="url(#alGrad)" d="M194.51,118.27h0c31,0,56.17,25.17,56.17,56.17v56.17h-56.17c-31,0-56.17-25.17-56.17-56.17h0c0-31,25.17-56.17,56.17-56.17Z"/>
+    <path fill="#fff" d="M227.76,190.96c-3.99-7.42-20.89-38.83-24.48-45.41-1.71-3.13-3.77-4.78-5.97-4.79h-.01c-2.11,0-4.02,1.51-5.67,4.48l-1.18,2.13c-8.99,16.19-19.49,35.22-20.91,38.66-.25.61-.62,1.37-1.04,2.25-2.34,4.86-6.24,13.01-.11,16.36.94.52,1.9.74,2.84.74,5.76,0,11.29-8.48,13.57-11.97,1.12-1.72,2.09-3.32,2.97-4.78,1.41,2.02,4.34,3.01,7.88,2.59,1.21-.14,2.78-.48,4.77-.91,3-.65,7.04-1.53,11.63-2.06.8,2.92,1.51,5.18,2.08,6.97.27.84.5,1.57.68,2.19.27.92,1.48,3.99,3.44,5.88,1.64,1.58,3.16,2.02,4.35,2.02.4,0,.76-.05,1.08-.12,2.54-.59,4.31-3.17,5.12-5.38,1.29-3.54.51-6.53-1.04-8.84ZM181.85,191.48c-6.56,10.06-10.03,11.02-11.79,10.07-2.96-1.62-.83-6.69,1.6-11.76.45-.93.83-1.73,1.12-2.43,1.53-3.7,15.48-28.83,20.74-38.29l1.18-2.13c.93-1.67,1.9-2.67,2.6-2.67h0c.59,0,1.7.78,2.9,2.96.64,1.18,1.71,3.15,3.06,5.64l-5.08,9.08c-.08.15-7.9,14.63-11.57,21.74-.01.03-.02.06-.03.08-.39.65-.8,1.32-1.22,2.03-1.01,1.69-2.16,3.62-3.51,5.68ZM199.67,186.86c-1.9.41-3.39.74-4.44.86-2.53.3-4.28-.42-4.7-1.28-.66-1.35.38-3.17,1.19-4,2.6-2.65,3.13-2.83,6.63-4.01.95-.32,2.36-.57,3.9-.57,1.67,0,3.5.3,5.04,1.15,1.87,1.03,3.11,2.76,3.69,5.14.05.22.11.45.16.66-4.55.55-8.51,1.41-11.48,2.06ZM214.7,184.53c-.1-.39-.2-.8-.3-1.21-.82-3.38-2.64-5.86-5.4-7.38-4.26-2.35-9.4-1.63-11.76-.83-1.06.36-1.9.65-2.64.95,3.31-6.21,6.61-12.32,6.65-12.4l3.98-7.11c4.71,8.73,11.31,20.99,15.69,29.13-1.89-.76-3.98-1.17-6.22-1.13ZM225.83,197.14c-.02.11-.02.21-.02.32-.07.37-.17.75-.32,1.14-.51,1.39-1.57,2.93-2.61,3.17-.62.14-1.36-.2-2.2-1.01-1.3-1.26-2.31-3.65-2.51-4.34-.19-.65-.43-1.4-.7-2.26-.51-1.6-1.13-3.58-1.83-6.09,3.85.21,6.28,1.87,7.71,3.36,1.88,1.97,2.68,4.41,2.49,5.72Z"/>
+  </svg>
+);
+
+// ─── BESIAK SCORING ENGINE ───
+const rangeScore = (ranges,v) => { if(v===0) return 0; for(let r of ranges){ if(v>=r[0]&&v<=r[1]) return r[2]; } return ranges[ranges.length-1][2]; };
+const getK1 = v => { const t=[[0,0],[1,7.35],[2,22.05],[3,29.4],[4,44.1],[5,51.45],[6,66.15]]; if(v>=7) return 73.5; return (t.find(r=>r[0]===v)||[0,0])[1]; };
+const getK2 = v => rangeScore([[0,0,0],[.001,.07,17.15],[.071,.14,34.3],[.141,.21,52.45],[.211,.35,68.6],[.351,.42,85.7],[.421,.49,102.9],[.491,.56,120.05],[.561,.63,137.2],[.631,.7,154.35],[.701,1,171.5]],v);
+const getK3 = v => { const t=[[1,0],[2,8.75],[3,17.5],[4,26.25],[5,35],[6,43.75],[7,52.5],[8,61.25],[9,70],[10,78.75]]; if(v>10) return 87.5; return (t.find(r=>r[0]===v)||[1,0])[1]; };
+const getK4 = v => rangeScore([[0,0,0],[.001,.1,8.75],[.101,.2,17.5],[.201,.3,26.25],[.301,.4,35],[.401,.5,43.75],[.501,.6,52.5],[.601,.7,61.25],[.701,.8,70],[.801,.9,78.75],[.901,1,87.5]],v);
+const getK5 = v => rangeScore([[0,0,0],[.001,.1,21],[.101,.2,42],[.201,.3,63],[.301,.4,84],[.401,.5,105],[.501,1,126],[1.001,1.5,147],[1.501,2,168],[2.001,2.5,189],[2.501,7,210]],v);
+const getK6 = (D,A) => { if(D+A===0) return {val:0,pts:17.5}; const k=(D-A)/(D+A); if(k===1) return {val:k,pts:0}; if(k===-1) return {val:k,pts:35}; const r=[[-1,-.8,31.5],[-.8,-.6,28],[-.6,-.4,24.5],[-.4,-.2,21],[-.2,.2,17.5],[.2,.4,14],[.4,.6,10.5],[.6,.8,7],[.8,1,3.5]]; for(let x of r){ if(k>=x[0]&&k<x[1]) return {val:k,pts:x[2]}; } return {val:k,pts:17.5}; };
+const getK7 = h => { const r=[[0,4.99,35],[5,5.5,31.5],[5.51,6,28],[6.01,6.5,21],[6.51,7,21],[7.01,7.5,7],[7.51,8,3.5],[8.01,24,0]]; for(let x of r){ if(h>=x[0]&&h<=x[1]) return x[2]; } return 0; };
+const getK8 = v => rangeScore([[0,0,0],[.001,.1,12.6],[.101,.2,25.2],[.201,.3,37.8],[.301,.4,50.4],[.401,.5,63],[.501,.6,75.6],[.601,.7,88.2],[.701,.8,100.8],[.801,.9,113.4],[.901,1,126]],v);
+const getK9 = v => rangeScore([[0,0,0],[.001,.2,2.4],[.201,.4,4.8],[.401,.8,7.2],[.801,1,12],[1.001,1.2,14.4],[1.201,1.4,16.8],[1.401,1.6,19.2],[1.601,1.8,21.6],[1.801,7,24]],v);
+const getK10 = v => rangeScore([[0,0,0],[.001,.1,12.6],[.101,.2,25.2],[.201,.3,37.8],[.301,.4,50.4],[.401,.5,63],[.501,.6,75.6],[.601,.7,88.2],[.701,.8,100.8],[.801,.9,113.4],[.901,1,126]],v);
+const getK11 = v => { const t=[[1,0],[2,.6],[3,1.2],[4,1.8],[5,2.4],[6,3],[7,3.6],[8,4.2],[9,4.8],[10,5.4]]; if(v>10) return 6; return (t.find(r=>r[0]===v)||[1,0])[1]; };
+const getK12 = v => { if(v>=6) return 6; const t={1:0,2:1.2,3:2.4,4:3.6,5:4.8,6:6}; return t[v]||0; };
+const getK13 = getK12;
+const K14M={"0-0":1,"0-1":1.5,"0-2":2,"0-3":2.5,"0-4":3,"1-0":1.5,"1-1":2,"1-2":2.5,"1-3":3,"1-4":3.5,"2-0":2,"2-1":2.5,"2-2":3,"2-3":3.5,"2-4":4,"3-0":2.5,"3-1":3,"3-2":3.5,"3-3":4,"3-4":4.5,"4-0":3,"4-1":3.5,"4-2":4,"4-3":4.5,"4-4":5};
+const getK14val = (Lb,lb) => K14M[`${Math.min(Lb,4)}-${Math.min(lb,4)}`]||1;
+const getK14pts = v => { if(v<=1) return 0; const r=[[1.001,1.4,.6],[1.401,1.8,1.2],[1.801,2.2,1.8],[2.201,2.6,2.4],[2.601,3,3],[3.001,3.4,3.6],[3.401,3.8,4.2],[3.801,4.2,4.8],[4.201,4.6,5.4],[4.601,5,6]]; for(let x of r){ if(v>=x[0]&&v<=x[1]) return x[2]; } return 6; };
+
+// ─── CYCLE ANALYZER ───
+const DAYS_ES = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+function analyzeCycle(pattern, reps, startDay, dHours, nHours, hourLimit, morningStart, paidOff, extraShifts) {
+  const base = [];
+  for (let i = 0; i < pattern.length; i++) {
+    if (pattern[i] === "L" && i > 0) {
+      let prevIsN = false;
+      for (let j = i-1; j >= 0; j--) { if (pattern[j] === "N") { prevIsN = true; break; } if (pattern[j] === "D" || pattern[j] === "L") break; }
+      let alreadyS = false;
+      for (let j = i-1; j >= 0; j--) { if (base[j] === "S") { alreadyS = true; break; } if (pattern[j] === "N") break; }
+      if (prevIsN && !alreadyS) { base.push("S"); continue; }
+    }
+    base.push(pattern[i]);
+  }
+  const expanded = [];
+  for (let r = 0; r < reps; r++) for (let i = 0; i < base.length; i++) expanded.push(base[i]);
+  for (let i = 1; i < expanded.length; i++) { if (expanded[i] === "L" && expanded[i-1] === "N") expanded[i] = "S"; }
+  const nt = expanded.length, nw = Math.ceil(nt/7), nStartHour = morningStart + dHours;
+  const days = expanded.map((t,i) => { const dow=(startDay+i)%7; let hrs=0; if(t==="D") hrs=dHours; else if(t==="N") hrs=24-nStartHour; else if(t==="S") hrs=nHours-(24-nStartHour); return {type:t,dow,hrs,isWork:t==="D"||t==="N"}; });
+  let maxN=0,curN=0; for(const d of days){if(d.type==="N"){curN++;maxN=Math.max(maxN,curN);}else curN=0;}
+  const nn=days.filter(d=>d.type==="N").length;
+  let maxW=0,curW=0; for(const d of days){if(d.isWork){curW++;maxW=Math.max(maxW,curW);}else curW=0;}
+  let weeksOver=0; for(let w=0;w<nw;w++){const wh=days.slice(w*7,(w+1)*7).reduce((s,d)=>s+d.hrs,0);if(wh>hourLimit)weeksOver++;}
+  let nu=0; for(let i=0;i<days.length-1;i++){const c=days[i].type,n=days[i+1].type;if(c==="D"&&n==="N"){const rest=24-(morningStart+dHours)+nStartHour;if(rest<11)nu++;}else if(c==="N"&&n==="D")nu++;}
+  let rotD=0,rotA=0; for(let i=0;i<days.length-1;i++){if(days[i].type==="D"&&days[i+1].type==="N")rotD++;if(days[i].type==="N"&&days[i+1].type==="D")rotA++;}
+  let ns=0,nsd=0; for(let w=0;w<nw;w++){const wd=days.slice(w*7,(w+1)*7);const sat=wd.find(d=>d.dow===5);const sun=wd.find(d=>d.dow===6);const sf=sat&&sat.type==="L";const su=sun&&sun.type==="L";if(!sf&&!su)nsd++;else if((sf&&!su)||(!sf&&su))ns++;}
+  let nst=0; for(let w=0;w<nw;w++){if(!days.slice(w*7,(w+1)*7).some(d=>d.type==="L"))nst++;}
+  let transitions=0; for(let i=1;i<days.length;i++){if(days[i-1].isWork!==days[i].isWork)transitions++;}
+  const types=new Set(days.filter(d=>d.isWork).map(d=>d.type));
+  const wb=[],rb=[]; let c2=null,cnt=0;
+  for(const d of days){const cat=d.isWork?"W":"R";if(cat===c2)cnt++;else{if(c2)(c2==="W"?wb:rb).push(cnt);c2=cat;cnt=1;}}
+  if(c2)(c2==="W"?wb:rb).push(cnt);
+  const Lb=wb.length>0?Math.max(...wb)-Math.min(...wb):0, lb=rb.length>0?Math.max(...rb)-Math.min(...rb):0;
+  return {days,nt,nw,nn,maxN,maxW,weeksOver,nu,rotD,rotA,ns,nsd,nst,transitions,types:types.size,Lb,lb,paidOff,extraShifts,morningStart,base};
+}
+
+// ─── FORMULARIO DE CONTACTO ───
+function Formulario({onComplete}) {
+  const [form, setForm] = useState({funcion:"",sector:"",problema:"",nombre:"",apellido:"",email:""});
+  const [error, setError] = useState("");
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+
+  const handleSubmit = () => {
+    if(!form.funcion||!form.sector||!form.nombre||!form.apellido||!form.email){
+      setError("Por favor complete los campos obligatorios (*).");
+      return;
+    }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)){
+      setError("Por favor ingrese un correo electrónico válido.");
+      return;
+    }
+    // Enviar a Google Sheets via Apps Script (opcional — reemplazar URL)
+    // fetch("URL_DE_TU_APPS_SCRIPT", {method:"POST",body:JSON.stringify(form)}).catch(()=>{});
+    onComplete(form);
+  };
+
+  const inputStyle = {width:"100%",padding:"10px 14px",border:"2px solid #d0dbe6",borderRadius:8,fontSize:15,background:"#f8fbfd",boxSizing:"border-box",marginTop:6};
+  const labelStyle = {display:"block",fontWeight:600,fontSize:14,color:"#1a2a3a"};
+  const sectionStyle = {marginBottom:20};
+
+  return (
+    <div style={{background:"#fff",borderRadius:16,padding:28,boxShadow:"0 4px 24px rgba(0,40,80,.08)",border:"1px solid #e8edf2"}}>
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:13,color:"#6b7d8e",lineHeight:1.6,background:"#f0f6ff",borderRadius:10,padding:14,border:"1px solid #c5d8ee"}}>
+          Luego de responder esto, tendrás acceso a la <strong>Calculadora de Riesgo de Turnos BESIAK</strong>. Los campos marcados con <strong style={{color:"#d32f2f"}}>*</strong> son obligatorios.
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <label style={labelStyle}>* Su función actual es de</label>
+        <select value={form.funcion} onChange={e=>set("funcion",e.target.value)} style={inputStyle}>
+          <option value="">— Seleccione —</option>
+          <option>Dirección, Gerencia o Subgerencia</option>
+          <option>Supervisor</option>
+          <option>Conductor/trabajador</option>
+          <option>Especialista o profesional de Salud y Seguridad Ocupacional</option>
+          <option>Consultor</option>
+          <option>Otro</option>
+        </select>
+      </div>
+
+      <div style={sectionStyle}>
+        <label style={labelStyle}>* Sector productivo donde se desempeña</label>
+        <select value={form.sector} onChange={e=>set("sector",e.target.value)} style={inputStyle}>
+          <option value="">— Seleccione —</option>
+          <option>Transporte de carga o personas</option>
+          <option>Minería</option>
+          <option>Logística</option>
+          <option>Operaciones portuarias/marítimas</option>
+          <option>Otro</option>
+        </select>
+      </div>
+
+      <div style={sectionStyle}>
+        <label style={labelStyle}>¿Qué problema quieres resolver relacionado a fatiga y somnolencia?</label>
+        <textarea value={form.problema} onChange={e=>set("problema",e.target.value)} rows={3}
+          placeholder="Cuéntanos brevemente..."
+          style={{...inputStyle,resize:"vertical",fontFamily:"inherit"}}/>
+      </div>
+
+      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        <div style={{flex:1,minWidth:140,...sectionStyle}}>
+          <label style={labelStyle}>* Nombre</label>
+          <input type="text" value={form.nombre} onChange={e=>set("nombre",e.target.value)} style={inputStyle} placeholder="Nombre"/>
+        </div>
+        <div style={{flex:1,minWidth:140,...sectionStyle}}>
+          <label style={labelStyle}>* Apellido</label>
+          <input type="text" value={form.apellido} onChange={e=>set("apellido",e.target.value)} style={inputStyle} placeholder="Apellido"/>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <label style={labelStyle}>* Correo electrónico</label>
+        <input type="email" value={form.email} onChange={e=>set("email",e.target.value)} style={inputStyle} placeholder="correo@ejemplo.com"/>
+      </div>
+
+      {error && <div style={{background:"#fdecea",borderRadius:8,padding:"10px 14px",fontSize:13,color:"#c62828",marginBottom:16,border:"1px solid #f5c6cb"}}>{error}</div>}
+
+      <button onClick={handleSubmit}
+        style={{width:"100%",padding:"14px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#005b8e,#00a851)",color:"#fff",fontWeight:700,fontSize:16,cursor:"pointer",boxShadow:"0 2px 10px rgba(0,91,142,.3)"}}>
+        Acceder a la Calculadora →
+      </button>
+
+      <p style={{fontSize:11,color:"#a0aab4",marginTop:12,textAlign:"center",lineHeight:1.5}}>
+        Sus datos son tratados conforme a la Ley N° 19.628 de Protección de la Vida Privada.<br/>
+        Responsable: Aloysia SpA / ErgoCare · contacto@aloysia.cl
+      </p>
+    </div>
+  );
+}
+
+// ─── CALCULADORA BESIAK V2 ───
+function BesiakV2() {
+  const [phase, setPhase] = useState("privacy");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [showLegalDetail, setShowLegalDetail] = useState(false);
+  const [step, setStep] = useState(0);
+  const [pattern, setPattern] = useState(["D","D","N","N","L","L","L","L"]);
+  const [startDay, setStartDay] = useState(0);
+  const [dHours, setDHours] = useState(12);
+  const [nHours, setNHours] = useState(12);
+  const [hourLimit, setHourLimit] = useState(45);
+  const [morningStart, setMorningStart] = useState(8);
+  const [paidOff, setPaidOff] = useState(0);
+  const [extraShifts, setExtraShifts] = useState(0);
+  const [shiftName, setShiftName] = useState("");
+
+  const gcd = (a,b) => b===0?a:gcd(b,a%b);
+  const lcm = (a,b) => (a*b)/gcd(a,b);
+  const reps = useMemo(() => { const len=pattern.length; if(len===0) return 1; return lcm(len,7)/len; }, [pattern.length]);
+  const addChip = useCallback(t => setPattern(p=>[...p,t]),[]);
+  const removeChip = useCallback(i => setPattern(p=>p.filter((_,j)=>j!==i)),[]);
+
+  const analysis = useMemo(() => analyzeCycle(pattern,reps,startDay,dHours,nHours,hourLimit,morningStart,paidOff,extraShifts),
+    [pattern,reps,startDay,dHours,nHours,hourLimit,morningStart,paidOff,extraShifts]);
+
+  const calc = useMemo(() => {
+    const a=analysis,nw=a.nw;
+    const k1p=getK1(a.maxN),k2v=a.nt>0?a.nn/a.nt:0,k2p=getK2(k2v),k3p=getK3(a.maxW);
+    const k4v=nw>0?a.weeksOver/nw:0,k4p=getK4(k4v),k5v=nw>0?a.nu/nw:0,k5p=getK5(k5v);
+    const {val:k6v,pts:k6p}=getK6(a.rotD,a.rotA),k7p=getK7(a.morningStart);
+    const k8v=nw>0?(0.43*a.ns+a.nsd)/nw:0,k8p=getK8(k8v);
+    const k9v=nw>0?(0.25*a.paidOff+a.extraShifts)/nw:0,k9p=getK9(k9v);
+    const k10v=nw>0?a.nst/nw:0,k10p=getK10(k10v),k11p=getK11(nw);
+    const k12p=getK12(Math.min(a.transitions,6)),k13p=getK13(a.types);
+    const k14raw=getK14val(a.Lb,a.lb),k14p=getK14pts(k14raw);
+    const hT=k1p+k2p+k3p+k4p+k5p+k6p+k7p,sT=k8p+k9p+k10p+k11p+k12p+k13p+k14p,total=hT+sT;
+    return {indicators:[
+      {id:"K1",name:"Noches consecutivas",val:a.maxN,pts:k1p,cat:"SALUD",max:73.5},
+      {id:"K2",name:"Dosis noches",val:+k2v.toFixed(3),pts:k2p,cat:"SALUD",max:171.5},
+      {id:"K3",name:"Días consec.",val:a.maxW,pts:k3p,cat:"SALUD",max:87.5},
+      {id:"K4",name:"Horas >límite/sem",val:+k4v.toFixed(3),pts:k4p,cat:"SALUD",max:87.5},
+      {id:"K5",name:"Sec. desfavorables",val:+k5v.toFixed(3),pts:k5p,cat:"SALUD",max:210},
+      {id:"K6",name:"Dir. rotación",val:+k6v.toFixed(3),pts:k6p,cat:"SALUD",max:35},
+      {id:"K7",name:"Inicio turno AM",val:`${morningStart}:00`,pts:k7p,cat:"SALUD",max:35},
+      {id:"K8",name:"Fines de semana",val:+k8v.toFixed(3),pts:k8p,cat:"SOCIAL",max:126},
+      {id:"K9",name:"Ajuste horario",val:+k9v.toFixed(3),pts:k9p,cat:"SOCIAL",max:24},
+      {id:"K10",name:"Tardes libres",val:+k10v.toFixed(3),pts:k10p,cat:"SOCIAL",max:126},
+      {id:"K11",name:"Semanas ciclo",val:nw,pts:k11p,cat:"SOCIAL",max:6},
+      {id:"K12",name:"Transiciones",val:Math.min(a.transitions,6),pts:k12p,cat:"SOCIAL",max:6},
+      {id:"K13",name:"Tipos de turno",val:a.types,pts:k13p,cat:"SOCIAL",max:6},
+      {id:"K14",name:"Irregularidad",val:k14raw.toFixed(1),pts:k14p,cat:"SOCIAL",max:6},
+    ],healthTotal:hT,socialTotal:sT,total,risk:total<=309?"BAJO":total<=600?"MEDIO":"ALTO"};
+  },[analysis,morningStart,paidOff,extraShifts]);
+
+  const rC=calc.risk==="BAJO"?"#00a851":calc.risk==="MEDIO"?"#f9a825":"#d32f2f";
+  const rB=calc.risk==="BAJO"?"#eaf7ef":calc.risk==="MEDIO"?"#fff8e1":"#fdecea";
+  const chipColors={D:"#2563eb",N:"#7c3aed",L:"#94a3b8",S:"#f59e0b"};
+  const chipLabels={D:"Día",N:"Noche",L:"Libre"};
+
+  const patternPreview = useMemo(() => {
+    const p=[...pattern],result=[];
+    for(let i=0;i<p.length;i++){
+      if(p[i]==="L"&&i>0){
+        let prevN=false; for(let j=i-1;j>=0;j--){if(p[j]==="N"){prevN=true;break;}if(p[j]!=="L")break;}
+        let lastNIdx=-1; for(let j=result.length-1;j>=0;j--){if(result[j]==="N"){lastNIdx=j;break;}}
+        const hasS=lastNIdx>=0&&result.slice(lastNIdx).includes("S");
+        if(prevN&&!hasS){result.push("S");continue;}
+      }
+      result.push(p[i]);
+    }
+    return result;
+  },[pattern]);
+
+  const steps=[{t:"Patrón del Turno",i:"🔧"},{t:"Contexto del Ciclo",i:"📅"},{t:"Ajustes",i:"⚙"},{t:"Resultados",i:"📋"}];
+
+  const renderPrivacy = () => (
+    <div style={{background:"#fff",borderRadius:16,padding:28,boxShadow:"0 4px 24px rgba(0,40,80,.08)",border:"1px solid #e8edf2"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
+        <div style={{width:32,height:32,borderRadius:8,background:"#005b8e",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </div>
+        <h2 style={{margin:0,fontSize:17,color:"#1a2a3a"}}>Protección de Datos Personales</h2>
+      </div>
+      <div style={{background:"#f8fbfd",borderRadius:10,padding:18,border:"1px solid #e0e8f0",fontSize:13,color:"#2d3e50",lineHeight:1.65}}>
+        <p style={{margin:"0 0 12px"}}>Esta herramienta procesa <strong>solo datos estructurales de su sistema de turnos</strong>. No recopila datos biométricos ni información de salud individual. Los datos del formulario de registro son tratados conforme a la legislación chilena.</p>
+        <p style={{margin:"0 0 12px"}}>Responsable: <strong>Aloysia SpA / ErgoCare</strong>, Chile. Derechos ARCO: <strong>contacto@aloysia.cl</strong>.</p>
+        <button onClick={()=>setShowLegalDetail(d=>!d)} style={{background:"none",border:"none",color:"#005b8e",fontSize:12,fontWeight:600,cursor:"pointer",padding:0,textDecoration:"underline"}}>
+          {showLegalDetail?"▾ Ocultar detalle legal":"▸ Ver marco legal aplicable"}
+        </button>
+        {showLegalDetail&&(
+          <div style={{background:"#f0f4f8",borderRadius:8,padding:14,marginTop:8,fontSize:12,color:"#3d4f60",lineHeight:1.6}}>
+            <p style={{margin:"0 0 8px",fontWeight:700}}>Ley N° 19.628 — Protección de la Vida Privada (vigente)</p>
+            <p style={{margin:"0 0 12px"}}>Regula el tratamiento de datos personales en Chile.</p>
+            <p style={{margin:"0 0 8px",fontWeight:700}}>Ley N° 21.719 — (vigencia 1/dic/2026)</p>
+            <p style={{margin:0}}>Reemplazará la Ley 19.628. Sanciones hasta 20.000 UTM.</p>
+          </div>
+        )}
+      </div>
+      <label style={{display:"flex",alignItems:"flex-start",gap:10,marginTop:18,cursor:"pointer",fontSize:13,color:"#1a2a3a",lineHeight:1.5}}>
+        <input type="checkbox" checked={privacyAccepted} onChange={e=>setPrivacyAccepted(e.target.checked)} style={{marginTop:3,width:18,height:18,accentColor:"#005b8e",cursor:"pointer"}}/>
+        <span>He leído y acepto la política de tratamiento de datos personales.</span>
+      </label>
+      <button onClick={()=>privacyAccepted&&setPhase("form")} disabled={!privacyAccepted}
+        style={{marginTop:16,width:"100%",padding:"12px",borderRadius:10,border:"none",background:privacyAccepted?"linear-gradient(135deg,#005b8e,#00a851)":"#d0dbe6",color:privacyAccepted?"#fff":"#8899aa",fontWeight:700,fontSize:15,cursor:privacyAccepted?"pointer":"default",boxShadow:privacyAccepted?"0 2px 10px rgba(0,91,142,.3)":"none"}}>
+        Continuar
+      </button>
+    </div>
+  );
+
+  const renderStep = () => {
+    switch(step){
+      case 0: return (
+        <div>
+          <p style={{fontSize:13,color:"#6b7d8e",margin:"0 0 16px",lineHeight:1.5}}>Arme su patrón base. El sistema inferirá el día <strong style={{color:"#f59e0b"}}>Saliente</strong> automáticamente.</p>
+          <div style={{display:"flex",gap:8,marginBottom:16}}>
+            {["D","N","L"].map(t=>(
+              <button key={t} onClick={()=>addChip(t)} style={{padding:"10px 20px",borderRadius:10,border:"none",background:chipColors[t],color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer"}}>
+                + {chipLabels[t]}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12,minHeight:44,padding:12,background:"#f8fbfd",borderRadius:10,border:"2px dashed #d0dbe6"}}>
+            {pattern.length===0&&<span style={{color:"#a0aab4",fontSize:13}}>Toque los botones para armar el patrón...</span>}
+            {pattern.map((t,i)=>(
+              <div key={i} onClick={()=>removeChip(i)} style={{padding:"6px 12px",borderRadius:8,background:chipColors[t],color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",position:"relative",minWidth:28,textAlign:"center"}}>
+                {t}<span style={{position:"absolute",top:-4,right:-4,width:16,height:16,borderRadius:8,background:"#e8edf2",color:"#666",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center"}}>×</span>
+              </div>
+            ))}
+          </div>
+          {pattern.length>0&&(
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,color:"#6b7d8e",marginBottom:4}}>Con saliente inferido:</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {patternPreview.map((t,i)=>(
+                  <div key={i} style={{padding:"4px 10px",borderRadius:6,background:chipColors[t]+"22",color:chipColors[t],fontWeight:700,fontSize:12,border:`1px solid ${chipColors[t]}44`}}>
+                    {t}{t==="S"?" ←":""}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+            <div>
+              <label style={{fontSize:13,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:4}}>Turno Día</label>
+              <select value={dHours} onChange={e=>setDHours(+e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:"2px solid #d0dbe6",fontSize:14,background:"#f8fbfd"}}>
+                <option value={8}>8h</option><option value={10}>10h</option><option value={12}>12h</option>
+              </select>
+            </div>
+            <div>
+              <label style={{fontSize:13,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:4}}>Turno Noche</label>
+              <select value={nHours} onChange={e=>setNHours(+e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:"2px solid #d0dbe6",fontSize:14,background:"#f8fbfd"}}>
+                <option value={8}>8h</option><option value={10}>10h</option><option value={12}>12h</option>
+              </select>
+            </div>
+          </div>
+          <div style={{fontSize:11,color:"#94a3b8",marginTop:12}}>Patrón base: {pattern.length} días → ciclo de {pattern.length*reps} días</div>
+        </div>
+      );
+      case 1: return (
+        <div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:14,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:4}}>Nombre del turno (opcional)</label>
+            <input type="text" value={shiftName} onChange={e=>setShiftName(e.target.value)} placeholder='Ej: "4x4 Modificado"'
+              style={{width:"100%",maxWidth:320,padding:"10px 14px",border:"2px solid #d0dbe6",borderRadius:8,fontSize:15,background:"#f8fbfd",boxSizing:"border-box"}}/>
+          </div>
+          <div style={{marginBottom:20,padding:"12px 16px",background:"#eaf4ed",borderRadius:8,border:"1px solid #c3dfc9",fontSize:14,color:"#2d5a3e"}}>
+            Patrón de <strong>{pattern.length} días</strong> × <strong>{reps} reps</strong> = <strong>{pattern.length*reps} días</strong> ({Math.ceil(pattern.length*reps/7)} semanas)
+          </div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:14,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:8}}>¿En qué día comienza el ciclo?</label>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {DAYS_ES.map((d,i)=>(
+                <button key={d} onClick={()=>setStartDay(i)} style={{padding:"8px 12px",borderRadius:8,border:startDay===i?"2px solid #005b8e":"2px solid #d0dbe6",background:startDay===i?"#005b8e":"#fff",color:startDay===i?"#fff":"#1a2a3a",fontWeight:600,fontSize:13,cursor:"pointer"}}>{d}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:14,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:4}}>Límite horas semanales</label>
+            <select value={hourLimit} onChange={e=>setHourLimit(+e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:"2px solid #d0dbe6",fontSize:14,background:"#f8fbfd"}}>
+              <option value={40}>40h (BESIAK original)</option><option value={42}>42h (Chile 2026)</option><option value={45}>45h (Chile antiguo)</option>
+            </select>
+          </div>
+          <div style={{background:"#f0f4f8",borderRadius:10,padding:12,fontSize:11}}>
+            <div style={{fontWeight:700,color:"#1a2a3a",marginBottom:6}}>Vista previa ({analysis.nt} días, {analysis.nw} semanas)</div>
+            <div style={{display:"flex",gap:2,marginBottom:4}}>{DAYS_ES.map(d=><div key={d} style={{flex:1,textAlign:"center",fontWeight:600,color:"#6b7d8e",fontSize:10}}>{d}</div>)}</div>
+            {Array.from({length:Math.ceil(analysis.days.length/7)},(_,w)=>(
+              <div key={w} style={{display:"flex",gap:2,marginBottom:2}}>
+                {Array.from({length:7},(_,d)=>{const idx=w*7+d;const day=analysis.days[idx];if(!day)return <div key={d} style={{flex:1,height:22}}/>;return <div key={d} style={{flex:1,height:22,borderRadius:3,background:chipColors[day.type]||"#eee",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:9,fontWeight:700}}>{day.type}</div>;})}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+      case 2: return (
+        <div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:14,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:4}}>Hora de inicio turno diurno</label>
+            <select value={morningStart} onChange={e=>setMorningStart(+e.target.value)} style={{padding:"10px 14px",border:"2px solid #d0dbe6",borderRadius:8,fontSize:15,background:"#f8fbfd"}}>
+              <option value={4}>04:00</option><option value={5}>05:00</option><option value={5.5}>05:30</option><option value={6}>06:00</option><option value={6.5}>06:30</option><option value={7}>07:00</option><option value={7.5}>07:30</option><option value={8}>08:00</option><option value={9}>09:00+</option>
+            </select>
+          </div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:14,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:4}}>Días libres pagados (compensación)</label>
+            <input type="number" value={paidOff} min={0} onChange={e=>setPaidOff(+e.target.value)} style={{width:100,padding:"10px 14px",border:"2px solid #d0dbe6",borderRadius:8,fontSize:15,background:"#f8fbfd"}}/>
+          </div>
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:14,fontWeight:600,color:"#1a2a3a",display:"block",marginBottom:4}}>Turnos adicionales programados</label>
+            <input type="number" value={extraShifts} min={0} onChange={e=>setExtraShifts(+e.target.value)} style={{width:100,padding:"10px 14px",border:"2px solid #d0dbe6",borderRadius:8,fontSize:15,background:"#f8fbfd"}}/>
+          </div>
+          <div style={{background:"#eaf4ed",borderRadius:10,padding:14,border:"1px solid #c3dfc9",fontSize:12,color:"#3d5a40",lineHeight:1.8}}>
+            <strong style={{display:"block",marginBottom:6",color:"#2d5a3e"}}>Calculado automáticamente:</strong>
+            Noches consec.: <strong>{analysis.maxN}</strong> · Días consec.: <strong>{analysis.maxW}</strong> · Noches: <strong>{analysis.nn}</strong> · Sem. &gt;{hourLimit}h: <strong>{analysis.weeksOver}</strong> · Sec. desfav.: <strong>{analysis.nu}</strong> · Transiciones: <strong>{analysis.transitions}</strong> · Tipos: <strong>{analysis.types}</strong>
+          </div>
+        </div>
+      );
+      case 3: return (
+        <div>
+          <div style={{background:rB,borderRadius:14,padding:24,marginBottom:20,border:`2px solid ${rC}`,textAlign:"center"}}>
+            <div style={{fontSize:13,textTransform:"uppercase",letterSpacing:2,color:rC,fontWeight:700,marginBottom:4}}>Nivel de riesgo</div>
+            <div style={{fontSize:42,fontWeight:800,color:rC,lineHeight:1}}>{calc.risk}</div>
+            <div style={{fontSize:28,fontWeight:700,color:"#1a2a3a",marginTop:8}}>{calc.total.toFixed(1)} <span style={{fontSize:14,fontWeight:400,color:"#6b7d8e"}}>/ 1000 pts</span></div>
+            {shiftName&&<div style={{fontSize:14,color:"#6b7d8e",marginTop:4}}>{shiftName}</div>}
+            <div style={{marginTop:10,fontSize:12,color:"#6b7d8e"}}>&gt;309 pts = incumplimiento creciente de recomendaciones ergonómicas</div>
+          </div>
+          <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
+            {[["Salud (K1–K7)",calc.healthTotal,700,"#005b8e","#f0f6ff","#c5d8ee","#d0dbe6"],["Social (K8–K14)",calc.socialTotal,300,"#6a1b9a","#f5f0ff","#d5c8ee","#e0d6ee"]].map(([l,v,m,c,bg,bc,bb])=>(
+              <div key={l} style={{flex:1,minWidth:160,background:bg,borderRadius:10,padding:14,border:`1px solid ${bc}`}}>
+                <div style={{fontSize:11,textTransform:"uppercase",letterSpacing:1.5,color:c,fontWeight:700}}>{l}</div>
+                <div style={{fontSize:24,fontWeight:800,color:c}}>{v.toFixed(1)} <span style={{fontSize:12,fontWeight:400}}>/ {m}</span></div>
+                <div style={{height:5,background:bb,borderRadius:3,marginTop:8}}><div style={{height:5,background:c,borderRadius:3,width:`${(v/m)*100}%`}}/></div>
+              </div>
+            ))}
+          </div>
+          <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr style={{background:"#1a2a3a",color:"#fff"}}>
+              {["Ind.","Variable","Valor","Pts","Máx","Cat."].map((h,i)=><th key={h} style={{padding:"8px 6px",textAlign:i<2?"left":"center"}}>{h}</th>)}
+            </tr></thead>
+            <tbody>{calc.indicators.map((d,i)=>{
+              const p=d.max>0?(d.pts/d.max)*100:0,bc=p<=30?"#00a851":p<=60?"#f9a825":"#d32f2f";
+              return [
+                i===0&&<tr key="sh"><td colSpan={6} style={{padding:"4px 6px",fontWeight:700,fontSize:10,color:"#005b8e",textTransform:"uppercase",letterSpacing:1.5}}>Indicadores de Salud (K1–K7)</td></tr>,
+                i===7&&<tr key="ss"><td colSpan={6} style={{padding:"10px 6px 4px",fontWeight:700,fontSize:10,color:"#6a1b9a",textTransform:"uppercase",letterSpacing:1.5,borderTop:"2px solid #e0d6ee"}}>Indicadores Sociales (K8–K14)</td></tr>,
+                <tr key={d.id} style={{background:i%2===0?"#f8fbfd":"#fff",borderBottom:"1px solid #eef2f6"}}>
+                  <td style={{padding:"7px 6px",fontWeight:700,color:d.cat==="SALUD"?"#005b8e":"#6a1b9a"}}>{d.id}</td>
+                  <td style={{padding:"7px 6px"}}>{d.name}</td>
+                  <td style={{padding:"7px 6px",textAlign:"center",fontFamily:"monospace"}}>{d.val}</td>
+                  <td style={{padding:"7px 6px",textAlign:"center"}}><div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                    <span style={{fontWeight:700,minWidth:32,fontSize:12}}>{d.pts.toFixed(1)}</span>
+                    <div style={{width:32,height:5,background:"#e8edf2",borderRadius:3}}><div style={{height:5,background:bc,borderRadius:3,width:`${p}%`}}/></div>
+                  </div></td>
+                  <td style={{padding:"7px 6px",textAlign:"center",color:"#999",fontSize:10}}>{d.max}</td>
+                  <td style={{padding:"7px 6px",textAlign:"center"}}><span style={{fontSize:9,padding:"2px 6px",borderRadius:8,fontWeight:600,background:d.cat==="SALUD"?"#e3f0ff":"#f0e6ff",color:d.cat==="SALUD"?"#005b8e":"#6a1b9a"}}>{d.cat}</span></td>
+                </tr>
+              ];
+            })}</tbody>
+          </table></div>
+          <div style={{marginTop:20,padding:14,background:"#f8fbfd",borderRadius:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#1a2a3a",marginBottom:8}}>Escala de Riesgo</div>
+            <div style={{position:"relative",height:24,borderRadius:5,overflow:"hidden",background:"linear-gradient(90deg,#2e9e5e 0%,#7bc67b 20%,#c8e06d 30.9%,#f0d84a 42%,#f0a830 55%,#e06040 75%,#c02020 100%)"}}>
+              <div style={{position:"absolute",left:"30.9%",top:0,width:1,height:"100%",background:"rgba(255,255,255,0.5)"}}/>
+              <div style={{position:"absolute",left:`${Math.min((calc.total/1000)*100,100)}%`,top:-3,transform:"translateX(-50%)",width:4,height:30,background:"#1a2a3a",borderRadius:2}}/>
+            </div>
+            <div style={{position:"relative",fontSize:10,color:"#6b7d8e",marginTop:3,height:14}}>
+              <span style={{position:"absolute",left:0}}>0</span>
+              <span style={{position:"absolute",left:"30.9%",transform:"translateX(-50%)"}}>309</span>
+              <span style={{position:"absolute",right:0}}>1000</span>
+            </div>
+          </div>
+          <div style={{marginTop:14,padding:12,background:"#fffbe6",borderRadius:10,fontSize:11,color:"#5d4037",lineHeight:1.5,borderLeft:"4px solid #f9a825"}}>
+            <strong>Recordatorio:</strong> Evaluación referencial y orientativa. No sustituye evaluación formal por un especialista.
+          </div>
+        </div>
+      );
+      default: return null;
+    }
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f4f8 0%,#e8eef5 50%,#f5f0ff 100%)",padding:"20px 12px"}}>
+      <div style={{maxWidth:680,margin:"0 auto"}}>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
+          <div style={{display:"flex",alignItems:"center"}}>
+            <AloysiaIsotipo size={160}/>
+            <div style={{textAlign:"left",marginLeft:-6}}>
+              <div style={{fontSize:20,fontWeight:800,color:"#1a2a3a",lineHeight:1.1}}>Autodiagnóstico</div>
+              <div style={{fontSize:20,fontWeight:800,color:"#1a2a3a",lineHeight:1.1}}>Riesgo del Turno</div>
+            </div>
+          </div>
+        </div>
+
+        {phase==="privacy"&&renderPrivacy()}
+        {phase==="form"&&<Formulario onComplete={()=>setPhase("disclaimer")}/>}
+        {phase==="disclaimer"&&(
+          <div style={{background:"#fff",borderRadius:16,padding:28,boxShadow:"0 4px 24px rgba(0,40,80,.08)",border:"1px solid #e8edf2"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
+              <div style={{width:32,height:32,borderRadius:8,background:"#f9a825",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>⚠</div>
+              <h2 style={{margin:0,fontSize:17,color:"#1a2a3a"}}>Antes de comenzar</h2>
+            </div>
+            <div style={{background:"#fffbe6",borderRadius:10,padding:20,border:"1px solid #f5e6a3",fontSize:14,color:"#5d4037",lineHeight:1.7}}>
+              Esta evaluación es <strong>referencial</strong>. Sus resultados son <strong>orientativos, no prescriptivos</strong>. No sustituye una evaluación formal por un especialista, ni debiera ser usada para calificación de trabajo pesado o proceso penal.
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:20}}>
+              <button onClick={()=>setPhase("form")} style={{flex:1,padding:"12px",borderRadius:10,border:"2px solid #d0dbe6",background:"#fff",color:"#6b7d8e",fontWeight:600,fontSize:14,cursor:"pointer"}}>← Volver</button>
+              <button onClick={()=>setPhase("wizard")} style={{flex:2,padding:"12px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#005b8e,#00a851)",color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer"}}>Entendido, comenzar →</button>
+            </div>
+          </div>
+        )}
+
+        {phase==="wizard"&&(<>
+          <div style={{display:"flex",gap:4,marginBottom:20}}>
+            {steps.map((s,i)=><div key={i} onClick={()=>setStep(i)} style={{flex:1,cursor:"pointer",textAlign:"center"}}>
+              <div style={{height:4,borderRadius:2,background:i<=step?"#005b8e":"#d0dbe6"}}/>
+              <div style={{fontSize:9,marginTop:4,color:i===step?"#005b8e":"#a0aab4",fontWeight:i===step?700:400}}>{s.i} {s.t}</div>
+            </div>)}
+          </div>
+          <div style={{background:"#fff",borderRadius:16,padding:28,boxShadow:"0 4px 24px rgba(0,40,80,.08)",border:"1px solid #e8edf2",marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+              <h2 style={{margin:0,fontSize:18,color:"#1a2a3a"}}>{steps[step]?.i} {steps[step]?.t}</h2>
+              {step<3&&<span style={{fontSize:12,color:"#a0aab4"}}>{step+1}/4</span>}
+            </div>
+            {renderStep()}
+          </div>
+          <div style={{display:"flex",gap:10,justifyContent:"space-between",marginBottom:16}}>
+            <button onClick={()=>step===0?setPhase("disclaimer"):setStep(s=>s-1)} style={{padding:"10px 20px",borderRadius:10,border:"2px solid #d0dbe6",background:"#fff",color:"#1a2a3a",fontWeight:600,cursor:"pointer",fontSize:14}}>← Anterior</button>
+            {step<3
+              ?<button onClick={()=>setStep(s=>s+1)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#005b8e,#00a851)",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:14}}>Siguiente →</button>
+              :<button onClick={()=>setStep(0)} style={{padding:"10px 24px",borderRadius:10,border:"2px solid #005b8e",background:"#fff",color:"#005b8e",fontWeight:700,cursor:"pointer",fontSize:14}}>↺ Recalcular</button>}
+          </div>
+        </>)}
+
+        <div style={{textAlign:"center",fontSize:10,color:"#a0aab4",marginTop:20,lineHeight:1.5}}>
+          Metodología BESIAK — Schönfelder & Knauth (1993), Gissel & Knauth (1998)<br/>
+          Adaptación: Castellucci & Viviani — Aloysia / ErgoCare
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<BesiakV2/>);
+</script>
+</body>
+</html>
